@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+
+
+# CONFIRM ALL DEPENDENCIES
+printf "\033[34;1m[x] Confirming dependencies ...\033[0m"
+which sudo shc cryptsetup md5sum file >/dev/null
+[ $? -ne 0 ] && printf "\033[31;1m\nE - missing depencencies ensure {which sudo shc md5sum cryptsetup file} are all installed!\033[0m\n" >&2 && exit 1
+printf " ✅\n"
+
+# GET PASSKEY
+printf "\033[1mPasskey: \033[0m"
+read -s passkey
+printf "\n"
+[ -z `echo "$passkey" | grep -E ".{4,}"` ] && printf "\033[31;1mE - ensure 4 characters minimum!\033[0m\n" >&2 && exit 1
+
+# CONFIRM PASSKEY
+printf "\033[1mConfirm passkey: \033[0m"
+read -s passkey2
+printf "\n"
+
+# VALIDATE PASSKEY AND GENERATE PASSWORD HASH
+[ "$passkey" != "$passkey2" ] && printf "\033[31;1mE - passkey mismatch!\033[0m\n" >&2 && exit 1
+pass_hash=$(echo "$passkey" | md5sum | head -c 10)
+
+# GET ISO PATH
+printf "\033[1mFull path where to create image (directory structure is created if doesn't exist): \033[0m"
+read iso_path
+[ -z "$iso_path" ] && printf "\033[31;1mE - Cancelled!\033[0m\n" >&2 && exit 1
+
+# GET MOUNT PATH
+printf "\033[1mMount folder full path (directory structure is created if doesn't exis): \033[0m"
+read mount_path
+[ -z "$mount_path" ] && printf "\033[31;1mE - Cancelled!\033[0m\n" >&2 && exit 1
+
+# CREATE MOUNT POINT
+[ ! -d "$mount_path" ] && mkdir -p $mount_path 2>/dev/null
+[ ! -d "$mount_path" ] && printf "\033[31;1mE - Couldn't create mount path at '$mount_path'!\033[0m\n" >&2 && exit 1
+
+# PREPARE IMAGE FILE
+[ ! -d "$iso_path" ] && mkdir -p $iso_path 2>/dev/null
+[ ! -d "$iso_path" ] && printf "\033[31;1mE - Couldn't create image path '$iso_path'!\033[0m\n" >&2 && exit 1
+
+image="$(tr -dc '0-9' </dev/urandom | head -c 10).img"
+image_path=$iso_path/$image
+printf "\033[1mImage size in (mb) >=50: \033[0m"
+read iso_size
+[ $iso_size -lt 50 ] && printf "\033[31;1mE - Ensure atleast 50 mb!\033[0m\n" >&2 && exit 1
+
+dd if=/dev/zero of=$image_path bs=1M count=$iso_size status=progress
+[ $? -ne 0 ] && exit 1
+
+# ENCRYPT THE IMAGE
+printf "\n\033[34;1m[x] Encrypting image ...\033[0m"
+echo "$passkey@`whoami`" | md5sum | head -c 12 | cryptsetup luksFormat $image_path --batch-mode
+[ $? -ne 0 ] && printf "\033[31;1m\nE - Error enrypting image!\033[0m\n" >&2 && exit 1
+printf " ✅\n"
+
+# CONFIGURING IMAGE
+printf "\033[34;1m[x] Configuring image ... ✅\n\033[0m"
+printf "\033[33;1mW - sudo may be requred!\n\033[0m"
+USER=`whoami`
+MAP_POINT=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 10)
+echo "$passkey@`whoami`" | md5sum | head -c 12 | sudo cryptsetup luksOpen $image_path $MAP_POINT
+sudo mkfs.ext4 /dev/mapper/$MAP_POINT >/dev/null
+sudo mount /dev/mapper/$MAP_POINT $mount_path >/dev/null 2>&1
+
+# CHANGE OWNERSHIP
+sudo chown $USER:$USER $mount_path
+mkdir $mount_path/{downloads,backup}
+
+# SCRAPE ISO INFOMATION
+RAW_OUTPUT=$(file $image_path)
+file_name=$(echo "$RAW_OUTPUT" | grep -oP '^\S+')
+version=$(echo "$RAW_OUTPUT" | grep -oP 'ver \K\d+')
+header_size=$(echo "$RAW_OUTPUT" | grep -oP 'header size \K\d+')
+id=$(echo "$RAW_OUTPUT" | grep -oP 'ID \K\d+')
+algo=$(echo "$RAW_OUTPUT" | grep -oP 'algo \K\w+')
+salt=$(echo "$RAW_OUTPUT" | grep -oP 'salt \K0x[0-9a-f]+')
+uuid=$(echo "$RAW_OUTPUT" | grep -oP 'UUID: \K[0-9a-f-]+')
+crc=$(echo "$RAW_OUTPUT" | grep -oP 'crc \K0x[0-9a-f]+')
+offset=$(echo "$RAW_OUTPUT" | grep -oP 'at \K0x[0-9a-f]+')
+keyslots_json=$(echo "$RAW_OUTPUT" | grep -oP '\{.*\}')
+
+cat > $mount_path/backup/about.txt <<EOF
+------------------------------
+Encrypted ISO Image Information
+------------------------------
+- File Name: $file_name
+- Encryption Version: $version
+- Header Size: $header_size bytes
+- ID: $id
+- Algorithm: $algo
+- Salt: $salt
+- UUID: $uuid
+- CRC: $crc
+- Offset: $offset
+- Encryption Date: `date`
+
+Key Slots: $keyslots_json
+
+------------------------------
+Ownership Infomation
+------------------------------
+- File owner: `whoami`
+- File Size: $iso_size MB
+- Mount Path: $mount_path
+- Compile path: `pwd`
+- Image Path: $image_path
+
+------------------------------
+Author Infomation
+------------------------------
+- Name: Alpinine99
+- github: https://github.com/Alpinine99/2f-encryption.git
+
+------------------------------
+Other Infomation
+------------------------------
+- No available passkey backup.
+- Handle with care to maintain security.
+
+EOF
+
+chmod 660 $mount_path/backup/about.txt 
+sudo sync
+sudo umount $mount_path
+sudo cryptsetup luksClose $MAP_POINT 
+
+# GENERATE MAPPER SOURCE CODE
+printf "\033[34;1m[x] Generating mapper source code ...\033[0m"
+cat > mapper <<EOF
+#! `which bash`
+
+[ \`id -u\` -ne `id -u` ] && exit 1
+
+if mount | grep -q "$MAP_POINT"; then
+    printf "\033[33;1mW - All set security may have been compromised!\n\033[0m" && exit 0
+fi
+
+printf "\033[33;1mW - 2F authentication required!\n\033[0m"
+printf "\033[1mPasskey: \033[0m"
+read -s passkey
+printf "\n"
+
+hash=\$(echo "\$passkey" | md5sum | head -c 10)
+
+[ "\$hash" != "$pass_hash" ] && printf "\033[31;1mE - invalid passkey!\nE - Identity unknown, not today!!!\n\033[0m" >&2 && exit 1
+printf "\033[32;1mI - Hi there mr `whoami`!\n\033[0m"
+printf "\033[33;1mW - sudo may be requred!\n\033[0m"
+printf "\033[34;1mI - Opening ...\033[0m\n\033[0m"
+echo "\$passkey@\`whoami\`" | md5sum | head -c 12 | sudo cryptsetup luksOpen $image_path $MAP_POINT
+
+mkdir $mount_path 2>/dev/null
+sudo mount /dev/mapper/$MAP_POINT $mount_path >/dev/null 2>&1
+[ \$? -ne 0 ] && printf "\033[31;1mE - Unsuccessful config!\033[0m\n" >&2 && exit 1
+
+printf "\033[32;1mI - Successful config\n\033[0m"
+
+exit 0
+
+EOF
+printf " ✅\n"
+
+# GENERATE UMAPPER SOURCE CODE
+printf "\033[34;1m[x] Generating umapper source code ...\033[0m"
+cat >umapper <<EOF
+#! `which bash`
+
+printf "\033[33;1mW - sudo may be requred!\n\033[0m"
+
+if ! mount | grep -q "$MAP_POINT"; then
+    sudo cryptsetup close $image_path >/dev/null 2>&1
+    printf "\033[33;1mW - All set nothing to configure!\n\033[0m" && exit 0
+fi
+
+sudo sync
+sleep .3
+
+sudo umount $mount_path >/dev/null 2>&1
+[ \$? -ne 0 ] && printf "\033[31;1mE - Unsuccessful config!\033[0m\n" >&2 && exit 1
+
+sudo cryptsetup luksClose $MAP_POINT >/dev/null 2>&1
+[ \$? -ne 0 ] && printf "\033[31;1mE - Unsuccessful config!\033[0m\n" >&2 && exit 1
+
+printf "\033[32;1mI - Successful config\n\033[0m"
+exit 0
+
+EOF
+printf " ✅\n"
+
+# FINISHUP
+printf "\033[34;1m[x] Configuration successful \033[0m✅\n"
+exit 0
