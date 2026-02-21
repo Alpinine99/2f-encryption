@@ -138,18 +138,22 @@ help="\\
     You can specify a image path -p <full path>, if you moved your image
     passkey -k in batch mode else prompted
     dumpfile -d <file name> to dump key and image path
+    mount path -m to to get the binarie's mount path
     Example:    \$0 -p /home/user/downloads/7565625236.img -k 1234e -d backup.txt
+    Example:    \$0 -m -k 12345
 "
 
 passkey=""
 iso_path=""
 dumpfile=""
-while getopts "h?p:k:d:" opt; do
+mountpath=0
+while getopts "h?p:k:d:m" opt; do
   case "\$opt" in
     h|\\?) printf "\$help"; exit 0;;
     p)  iso_path=\$OPTARG;;
     k)  passkey=\$OPTARG;;
-    d)  dumpfile=\$OPTARG;;
+    d)  dumpfile=\$OPTARGA;;
+    m)  mountpath=1;;
     esac
 done
 
@@ -159,6 +163,12 @@ if [ -z "\$passkey" ]; then
     read -s passkey
     printf "\n"
 
+fi
+
+if [ \$mountpath -eq 1 ]; then
+    hash=\$(echo "\$passkey" | md5sum | head -c 10)
+    [ "\$hash" != "$pass_hash" ] && printf "\033[31;1mE - invalid passkey!\nE - Identity unknown, not today!!!\n\033[0m" >&2 && exit 1
+    printf "mountPath: $mount_path\n" && exit 0
 fi
 
 printf "\033[33;1mW - sudo may be requred!\n\033[0m"
