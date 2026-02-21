@@ -20,13 +20,33 @@ cd 2f-encryption
 
 - **Install the required dependencies:**
 
+| tool                | description               |
+| ------------------- | ------------------------- |
+| `make`              | Build automation tool     |
+| `cryptsetup`        | Disk encryption utility   |
+| `file`              | File type identification  |
+| `shc`               | Shell script compiler     |
+| `which`             | Command locator           |
+
 ```bash
 # Ubuntu/Debian
 sudo apt-get update
-sudo apt-get install -y make shc cryptsetup file
+sudo apt-get install -y make cryptsetup file
 
 # CentOS/RHEL
-sudo yum install -y make shc cryptsetup file which
+sudo yum install -y make cryptsetup file which
+
+# Ubuntu specific
+sudo add-apt-repository ppa:neurobin/ppa
+sudo apt-get update
+sudo apt-get install shc
+
+# Elsewhere
+# Install shc from source
+git clone https://github.com/neurobin/shc.git
+cd shc
+make
+sudo make install
 ```
 
 - **Run make to build the project:**
