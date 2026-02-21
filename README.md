@@ -100,6 +100,14 @@ nano ~/.bashrc
 nano ~/.zshrc
 
 # Add the following lines at the top of the file for login validation
+
+# Make sure to add this to distinguish between login and non-login shells to avoid issues with scp and rsync for those using ssh
+# These lines might be present already just paste the rest below
+case $- in
+    *i*) ;;
+      *) return;;
+esac
+
 if [ -o login ]; then
     $HOME/.local/bin/mapperx
     [ $? -ne 0 ] && logout
