@@ -48,6 +48,13 @@ cd shc
 ./configure
 make
 sudo make install
+
+# If you have issues with shc installation from source, you can:
+sudo apt-get update
+sudo apt-get install automake
+./autogen.sh
+make
+sudo make install
 ```
 
 - **Run make to build the project:**
@@ -144,7 +151,7 @@ umapperx
 
 - Ensure that the passkey used for 2FA is stored as there is no passkey backup and you'll lose access to your encrypted data if you forget it.
 
-- Don't lose the binary or run make uninstall if you still hav sensitive data encrypted as that will also result in loss of access to your encrypted data.
+- Don't lose the binary or run make uninstall if you still have sensitive data encrypted as that will also result in loss of access to your encrypted data.
 
 - Don't setup encryption on root as you can easily lock yourself out of your system if you forget the passkey or if there are issues with the 2FA system, instead change files permissions for root sensitive data.
 
