@@ -3,8 +3,8 @@
 
 # CONFIRM ALL DEPENDENCIES
 printf "\033[34;1m[x] Confirming dependencies ...\033[0m"
-which sudo shc cryptsetup md5sum file >/dev/null
-[ $? -ne 0 ] && printf "\033[31;1m\nE - missing depencencies ensure {which sudo shc md5sum cryptsetup file} are all installed!\033[0m\n" >&2 && exit 1
+which sudo shc cryptsetup file >/dev/null
+[ $? -ne 0 ] && printf "\033[31;1m\nE - missing dependencies ensure {which sudo shc cryptsetup file} are all installed!\033[0m\n" >&2 && exit 1
 printf " ✅\n"
 
 # GET PASSKEY
@@ -28,7 +28,7 @@ read iso_path
 [ -z "$iso_path" ] && printf "\033[31;1mE - Cancelled!\033[0m\n" >&2 && exit 1
 
 # GET MOUNT PATH
-printf "\033[1mMount folder full path (directory structure is created if doesn't exis): \033[0m"
+printf "\033[1mMount folder full path (directory structure is created if doesn't exits): \033[0m"
 read mount_path
 [ -z "$mount_path" ] && printf "\033[31;1mE - Cancelled!\033[0m\n" >&2 && exit 1
 
@@ -44,7 +44,7 @@ image="$(tr -dc '0-9' </dev/urandom | head -c 10).img"
 image_path=$iso_path/$image
 printf "\033[1mImage size in (mb) >=50: \033[0m"
 read iso_size
-[ $iso_size -lt 50 ] && printf "\033[31;1mE - Ensure atleast 50 mb!\033[0m\n" >&2 && exit 1
+[ $iso_size -lt 50 ] && printf "\033[31;1mE - Ensure at least 50 mb!\033[0m\n" >&2 && exit 1
 
 dd if=/dev/zero of=$image_path bs=1M count=$iso_size status=progress
 [ $? -ne 0 ] && exit 1
@@ -52,12 +52,12 @@ dd if=/dev/zero of=$image_path bs=1M count=$iso_size status=progress
 # ENCRYPT THE IMAGE
 printf "\n\033[34;1m[x] Encrypting image ...\033[0m"
 echo "$passkey@`whoami`" | md5sum | head -c 12 | cryptsetup luksFormat $image_path --batch-mode
-[ $? -ne 0 ] && printf "\033[31;1m\nE - Error enrypting image!\033[0m\n" >&2 && exit 1
+[ $? -ne 0 ] && printf "\033[31;1m\nE - Error encrypting image!\033[0m\n" >&2 && exit 1
 printf " ✅\n"
 
 # CONFIGURING IMAGE
 printf "\033[34;1m[x] Configuring image ... ✅\n\033[0m"
-printf "\033[33;1mW - sudo may be requred!\n\033[0m"
+printf "\033[33;1mW - sudo may be required!\n\033[0m"
 USER=`whoami`
 MAP_POINT=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 10)
 echo "$passkey@`whoami`" | md5sum | head -c 12 | sudo cryptsetup luksOpen $image_path $MAP_POINT
@@ -68,7 +68,7 @@ sudo mount /dev/mapper/$MAP_POINT $mount_path >/dev/null 2>&1
 sudo chown $USER:$USER $mount_path
 mkdir $mount_path/{downloads,backup}
 
-# SCRAPE ISO INFOMATION
+# SCRAPE ISO INFORMATION
 RAW_OUTPUT=$(file $image_path)
 file_name=$(echo "$RAW_OUTPUT" | grep -oP '^\S+')
 version=$(echo "$RAW_OUTPUT" | grep -oP 'ver \K\d+')
@@ -99,7 +99,7 @@ Encrypted ISO Image Information
 Key Slots: $keyslots_json
 
 ------------------------------
-Ownership Infomation
+Ownership Information
 ------------------------------
 - File owner: `whoami`
 - File Size: $iso_size MB
@@ -108,13 +108,13 @@ Ownership Infomation
 - Image Path: $image_path
 
 ------------------------------
-Author Infomation
+Author Information
 ------------------------------
 - Name: Alpinine99
 - github: https://github.com/Alpinine99/2f-encryption.git
 
 ------------------------------
-Other Infomation
+Other Information
 ------------------------------
 - No available passkey backup.
 - Handle with care to maintain security.
@@ -146,7 +146,7 @@ hash=\$(echo "\$passkey" | md5sum | head -c 10)
 
 [ "\$hash" != "$pass_hash" ] && printf "\033[31;1mE - invalid passkey!\nE - Identity unknown, not today!!!\n\033[0m" >&2 && exit 1
 printf "\033[32;1mI - Hi there mr `whoami`!\n\033[0m"
-printf "\033[33;1mW - sudo may be requred!\n\033[0m"
+printf "\033[33;1mW - sudo may be required!\n\033[0m"
 printf "\033[34;1mI - Opening ...\033[0m\n\033[0m"
 echo "\$passkey@\`whoami\`" | md5sum | head -c 12 | sudo cryptsetup luksOpen $image_path $MAP_POINT
 
@@ -166,7 +166,7 @@ printf "\033[34;1m[x] Generating umapper source code ...\033[0m"
 cat >umapper <<EOF
 #! `which bash`
 
-printf "\033[33;1mW - sudo may be requred!\n\033[0m"
+printf "\033[33;1mW - sudo may be required!\n\033[0m"
 
 if ! mount | grep -q "$MAP_POINT"; then
     sudo cryptsetup close $image_path >/dev/null 2>&1
@@ -188,6 +188,6 @@ exit 0
 EOF
 printf " ✅\n"
 
-# FINISHUP
+# FINISH UP
 printf "\033[34;1m[x] Configuration successful \033[0m✅\n"
 exit 0
