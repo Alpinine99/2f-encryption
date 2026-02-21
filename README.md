@@ -44,6 +44,8 @@ make
 make install
 ```
 
+> For stealth you can delete the image information file on the folder `YOUR_MOUNTPATH/backup/about.txt` although it does contain some useful information about your image file.
+
 ![make output](/res/image.png)
 
 - **Configure the user's path to include the binary:**
