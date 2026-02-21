@@ -45,6 +45,7 @@ sudo apt-get install shc
 # Install shc from source
 git clone https://github.com/neurobin/shc.git
 cd shc
+./configure
 make
 sudo make install
 ```
