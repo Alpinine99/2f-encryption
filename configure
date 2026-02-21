@@ -135,23 +135,23 @@ cat > mapper <<EOF
 
 help="\\
     This binary decrypts and maps you data to the compiled folder.
-    You can specify a image path -p <full path>, if you moved your image and passkey -k in batch mode else prompted.
-    Example:    \$0 -p /home/user/downloads/7565625236.img -k 1234e
+    You can specify a image path -p <full path>, if you moved your image
+    passkey -k in batch mode else prompted
+    dumpfile -d <file name> to dump key and image path
+    Example:    \$0 -p /home/user/downloads/7565625236.img -k 1234e -d backup.txt
 "
 
 passkey=""
 iso_path=""
-while getopts "h?p:k:" opt; do
+dumpfile=""
+while getopts "h?p:k:d:" opt; do
   case "\$opt" in
     h|\\?) printf "\$help"; exit 0;;
     p)  iso_path=\$OPTARG;;
     k)  passkey=\$OPTARG;;
+    d)  dumpfile=\$OPTARG;;
     esac
 done
-
-if mount | grep -q "$MAP_POINT"; then
-    printf "\033[33;1mW - All set security may have been compromised!\n\033[0m" && exit 0
-fi
 
 if [ -z "\$passkey" ]; then
     printf "\033[33;1mW - 2F authentication required!\n\033[0m"
@@ -163,35 +163,50 @@ fi
 
 printf "\033[33;1mW - sudo may be requred!\n\033[0m"
 
+MAP_POINT=$MAP_POINT
 if [ -z "\$iso_path" ]; then
+    if mount | grep -q "\$MAP_POINT"; then
+        printf "\033[33;1mW - All set security may have been compromised!\n\033[0m" && exit 0
+    fi
     image_path=$image_path
     hash=\$(echo "\$passkey" | md5sum | head -c 10)
     [ "\$hash" != "$pass_hash" ] && printf "\033[31;1mE - invalid passkey!\nE - Identity unknown, not today!!!\n\033[0m" >&2 && exit 1
     printf "\033[32;1mI - Hi there mr `whoami`!\n\033[0m"
 else
     if [ -f \$iso_path ]; then
-        image_path=\$iso_path
+        image_path=\$(realpath \$iso_path)
     else
         printf "\033[31;1mE - Invalid path!\033[0m\n" >&2 && exit 1
     fi
+    MAP_POINT=\$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 10)
 fi
 
 if [ -f \$image_path ]; then
     printf "\033[34;1mI - Opening ...\033[0m\n\033[0m"
-    echo "\$passkey@\`whoami\`" | md5sum | head -c 12 | sudo cryptsetup luksOpen \$image_path $MAP_POINT
+    echo "\$passkey@\`whoami\`" | md5sum | head -c 12 | sudo cryptsetup luksOpen \$image_path \$MAP_POINT
     [ \$? -ne 0 ] && printf "\033[31;1mE - Could not decrypt data!\033[0m\n" >&2 && exit 1
 else
     printf "\033[33;1mW - Image missing!\033[0m\n" >&2
     printf "\033[1mEnter full path to image: \033[0m"
-    read iso_path
-    [ ! -f "\$iso_path" ] && printf "\033[31;1mE - Invalid path!\033[0m\n" >&2 && exit 1
+    read image_path
+    [ ! -f "\$image_path" ] && printf "\033[31;1mE - Invalid path!\033[0m\n" >&2 && exit 1
     printf "\033[34;1mI - Opening ...\033[0m\n\033[0m"
-    echo "\$passkey@\`whoami\`" | md5sum | head -c 12 | sudo cryptsetup luksOpen \$iso_path $MAP_POINT
+    echo "\$passkey@\`whoami\`" | md5sum | head -c 12 | sudo cryptsetup luksOpen \$image_path \$MAP_POINT
     [ \$? -ne 0 ] && printf "\033[31;1mE - Error decrypting, maybe not the target iso!\033[0m\n" >&2 && exit 1
 fi
 
+if [ -n "\$dumpfile" ]; then
+    printf "\033[34;1mI - Dumping key to "\$dumpfile" ...\033[0m\n"
+    echo "path: \$(realpath \$image_path)" > \$dumpfile
+    echo "owner: \$(whoami)" >> \$dumpfile
+    echo "key: \`echo \$passkey@\$(whoami) | md5sum | head -c 12\`" >> \$dumpfile
+    sudo cryptsetup luckClose \$MAP_POINT >/dev/null 2>&1
+    printf "\033[34;1mI - Key dumped!\033[0m\n"
+    exit 0
+fi
+
 mkdir $mount_path 2>/dev/null
-sudo mount /dev/mapper/$MAP_POINT $mount_path >/dev/null 2>&1
+sudo mount /dev/mapper/\$MAP_POINT $mount_path >/dev/null 2>&1
 [ \$? -ne 0 ] && printf "\033[31;1mE - Unsuccessful config!\033[0m\n" >&2 && exit 1
 
 printf "\033[32;1mI - Successful config\n\033[0m"
@@ -228,6 +243,7 @@ if [ -z "\$mount_path" ]; then
     MAP_POINT=$MAP_POINT
 else
     [ ! -d \$mount_path ] && printf "\033[31;1mE - Invalid path!\033[0m\n" >&2 && exit 1
+    mount_path=\$(realpath \$mount_path)
     if mount | grep -q "\$mount_path"; then
         MAP_POINT=\`mount | grep "\$mount_path" | cut -f1 -d' '\`
     else
