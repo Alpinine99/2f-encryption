@@ -32,23 +32,35 @@ cd 2f-encryption
 # Ubuntu/Debian
 sudo apt-get update
 sudo apt-get install -y make cryptsetup file
+```
 
+```bash
 # CentOS/RHEL
 sudo yum install -y make cryptsetup file which
+```
 
+Now installing `shc` which is not available in the default repositories of most distributions, you can either install it from a third-party repository or build it from source.
+
+```bash
 # Ubuntu specific
 sudo add-apt-repository ppa:neurobin/ppa
 sudo apt-get update
 sudo apt-get install shc
+```
 
-# Elsewhere
+```bash
+# Any other distribution
 # Install shc from source
 git clone https://github.com/neurobin/shc.git
 cd shc
 ./configure
 make
 sudo make install
+```
 
+In any case if you have issues with make execute the following:
+
+```bash
 # If you have issues with shc installation from source, you can:
 sudo apt-get update
 sudo apt-get install automake
@@ -56,6 +68,8 @@ sudo apt-get install automake
 make
 sudo make install
 ```
+
+> Make sure to use your distribution's package manager.
 
 - **Run make to build the project:**
 
@@ -93,14 +107,16 @@ source ~/.zshrc
 - **Configure for automatic mounting on login:**
 
 ```bash
-# bash users
-nano ~/.bashrc
+nano ~/.bashrc # bash users
+```
 
-# zsh users
-nano ~/.zshrc
+```bash
+nano ~/.zshrc # zsh users
+```
 
-# Add the following lines at the top of the file for login validation
+At the top of the file, add the following lines:
 
+```bash
 # Make sure to add this to distinguish between login and non-login shells to avoid issues with scp and rsync for those using ssh
 # These lines might be present already just paste the rest below
 case $- in
@@ -117,13 +133,16 @@ fi
 - **Configure for automatic unmounting on logout:**
 
 ```bash
-# bash users
-nano ~/.bash_logout
+nano ~/.bash_logout # bash users
+```
 
-# zsh users
-nano ~/.zlogout
+```bash
+nano ~/.zlogout # zsh users
+```
 
-# Add the following line at the bottom of the file to unmount and encrypt data on logout
+Add the following line at the end of the file:
+
+```bash
 $HOME/.local/bin/umapperx
 ```
 
@@ -155,6 +174,47 @@ mapperx
 umapperx
 ```
 
+- **Help menu:**
+
+```bash
+mapperx -h
+```
+
+```bash
+umapperx -h
+```
+
+- **Usage examples:**
+
+```bash
+# To mount and decrypt data from a specific image file
+mapperx -p /path/to/image.img
+```
+
+```bash
+# To dump decryption key
+mapperx -p /path/to/image.img -d dumpfile.txt   # Specific image file
+mapperx -d dumpfile.txt                         # Default image file
+```
+
+```bash
+# To pass the passkey directly as an argument (not recommended for security reasons)
+mapperx -p /path/to/image.img -k your_passkey   # Specific image file
+mapperx -k your_passkey                         # Default image file
+```
+
+```bash
+# To get binary mount point
+mapperx -m
+```
+
+```bash
+# To unmount and encrypt data from a specific image file
+umapperx -p /path/to/mountpoint
+```
+
+- **Important:** The `mapperx` binary is only compatible with the user who compiled it, and it will not work for other users on the system. This is because the binary is designed to confirm the user id before producing any output and for any other user there is no output apart from return code 1.
+
 ## 🕵️‍♀️ Security Considerations
 
 - Ensure that the passkey used for 2FA is stored as there is no passkey backup and you'll lose access to your encrypted data if you forget it.
@@ -168,6 +228,9 @@ umapperx
 - **To uninstall the project:**
 
 ```bash
+# Backup your encryption key
+mapperx -d backup_key.txt
+
 # Move to the project directory
 cd 2f-encryption
 make uninstall
@@ -194,17 +257,29 @@ Start by commenting out the lines you added to your shell configuration file for
 
 ```bash
 nano ~/.bashrc  # bash users
-nano ~/.zshrc   # zsh users
+```
 
+```bash
+nano ~/.zshrc   # zsh users
+```
+
+```bash
 # Comment out the lines for login validation
 #if [ -o login ]; then
 #    $HOME/.local/bin/mapperx
 #    [ $? -ne 0 ] && logout
 #fi
+```
 
+```bash
 nano ~/.bash_logout # bash users
-nano ~/.zlogout # zsh users
+```
 
+```bash
+nano ~/.zlogout # zsh users
+```
+
+```bash
 # Comment out the line for logout unmounting
 #$HOME/.local/bin/umapperx  
 ```
