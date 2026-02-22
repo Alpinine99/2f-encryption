@@ -96,7 +96,9 @@ make install
 # Bash users
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
+```
 
+```bash
 # Zsh users
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
@@ -151,7 +153,9 @@ $HOME/.local/bin/umapperx
 ```bash
 # Create a sudoers file for the user
 sudo visudo -f /etc/sudoers.d/mapperx
+```
 
+```bash
 # Add the following line to allow the user to run the necessary commands without a password
 username ALL=(ALL) NOPASSWD: /bin/sync, /bin/mount, /bin/umount, /usr/sbin/cryptsetup
 ```
@@ -230,9 +234,10 @@ umapperx -p /path/to/mountpoint
 ```bash
 # Backup your encryption key
 mapperx -d backup_key.txt
+```
 
-# Move to the project directory
-cd 2f-encryption
+```bash
+# Delete the binary
 make uninstall
 ```
 
